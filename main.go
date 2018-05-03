@@ -15,14 +15,16 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-const (
-	mainDir  = "/media/lieuwe/streams/"
-	listPath = mainDir + "streamlist"
+const checkInterval = 30 * time.Second
 
-	checkInterval = 30 * time.Second
+var (
+	mainDir string
+	ch      = makeChanMap()
 )
 
-var ch = makeChanMap()
+func getListPath() string {
+	return mainDir + "streamlist"
+}
 
 func getOutputFile(url string) (string, error) {
 	ident := path.Base(url)
@@ -83,6 +85,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	mainDir = os.Args[1]
+
+	listPath := getListPath()
 	watcher.Add(listPath)
 
 	for {
