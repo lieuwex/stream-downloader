@@ -52,7 +52,7 @@ func handleStream(ctx context.Context, url string) {
 			return
 		}
 
-		cmd := exec.Command("streamlink", url, "best", "-o", outputFile)
+		cmd := exec.Command("streamlink", url, "1080p,720p,best", "-o", outputFile)
 		if err := cmd.Run(); err != nil {
 			// log.Printf("error while running command for %s: %s\n", url, err.Error())
 			continue
