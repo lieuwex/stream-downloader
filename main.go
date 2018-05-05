@@ -19,7 +19,7 @@ const checkInterval = 30 * time.Second
 
 var (
 	mainDir string
-	ch      = makeChanMap()
+	lm      = MakeLockMap()
 )
 
 func getListPath() string {
@@ -40,9 +40,8 @@ func getOutputFile(url string) (string, error) {
 }
 
 func handleStream(ctx context.Context, url string) {
-	if ch, found := ch.GetChannel(url); found {
-		<-ch
-	}
+	unlock := lm.Lock(url)
+	defer unlock()
 
 	for {
 		select {
@@ -60,12 +59,10 @@ func handleStream(ctx context.Context, url string) {
 			return
 		}
 
-		ch.AddDownloading(url)
 		cmd := exec.Command("streamlink", url, "1080p,720p,best", "-o", outputFile)
 		if err := cmd.Run(); err == nil {
 			log.Printf("stream for %s ended\n", url)
 		}
-		ch.RemoveDownloading(url)
 	}
 }
 
