@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"stream-downloader/lockmap"
 	"strings"
 	"time"
 
@@ -19,7 +20,7 @@ const checkInterval = 30 * time.Second
 
 var (
 	mainDir string
-	lm      = MakeLockMap()
+	lm      = lockmap.New()
 )
 
 func getListPath() string {
