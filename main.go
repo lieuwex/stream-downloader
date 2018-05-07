@@ -56,7 +56,7 @@ func handleStream(ctx context.Context, url string) {
 
 		outputFile, err := getOutputFile(url)
 		if err != nil {
-			log.Printf("error while creating folder for %s: %s\n", url, err.Error())
+			log.Fatalf("error while creating folder for %s: %s\n", url, err.Error())
 			return
 		}
 
