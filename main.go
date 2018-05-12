@@ -63,6 +63,8 @@ func handleStream(ctx context.Context, url string) {
 		cmd := exec.Command(
 			"streamlink",
 			"--twitch-disable-hosting",
+			"--ffmpeg-video-transcode",
+			"h264",
 			url,
 			"1080p,720p,best",
 			"-o",

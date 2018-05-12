@@ -20,6 +20,9 @@ RUN echo "http://dl-2.alpinelinux.org/alpine/edge/main" > /etc/apk/repositories 
 	echo "http://dl-2.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
 	apk update
 
+# Install ffmpeg
+RUN apk add ffmpeg --no-cache
+
 # Install streamlink
 RUN apk add gcc musl-dev --no-cache && pip install streamlink
 
