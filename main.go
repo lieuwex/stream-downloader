@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"stream-downloader/lockmap"
 	"strings"
 	"time"
@@ -27,17 +29,57 @@ func getListPath() string {
 	return mainDir + "streamlist"
 }
 
-func getOutputFile(url string) (string, error) {
+func getOutputFile(time time.Time, url string, tmp bool) (string, error) {
 	ident := path.Base(url)
 
 	folder := filepath.Join(mainDir, ident)
+	if tmp {
+		folder = filepath.Join(folder, "tmp")
+	}
+
 	if err := os.MkdirAll(folder, 0700); err != nil && !os.IsExist(err) {
 		return "", err
 	}
 
-	fileName := fmt.Sprintf("%d.mp4", time.Now().Unix())
+	var ext string
+	if tmp {
+		ext = "ts"
+	} else {
+		ext = "mp4"
+	}
+
+	fileName := fmt.Sprintf("%d.%s", time.Unix(), ext)
 
 	return filepath.Join(folder, fileName), nil
+}
+
+func convertStream(time time.Time, url string) error {
+	inputFile, err := getOutputFile(time, url, true)
+	if err != nil {
+		return err
+	}
+
+	outputFile, err := getOutputFile(time, url, false)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command(
+		"ffmpeg",
+		"-i",
+		inputFile,
+		"-c:v",
+		"libx264",
+		"-threads",
+		strconv.Itoa(runtime.NumCPU()),
+		outputFile,
+	)
+
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	return os.Remove(inputFile)
 }
 
 func handleStream(ctx context.Context, url string) {
@@ -54,7 +96,8 @@ func handleStream(ctx context.Context, url string) {
 
 		log.Printf("checking for %s\n", url)
 
-		outputFile, err := getOutputFile(url)
+		time := time.Now()
+		outputFile, err := getOutputFile(time, url, true)
 		if err != nil {
 			log.Fatalf("error while creating folder for %s: %s\n", url, err.Error())
 			return
@@ -63,8 +106,6 @@ func handleStream(ctx context.Context, url string) {
 		cmd := exec.Command(
 			"streamlink",
 			"--twitch-disable-hosting",
-			"--ffmpeg-video-transcode",
-			"h264",
 			url,
 			"1080p,720p,best",
 			"-o",
@@ -73,6 +114,15 @@ func handleStream(ctx context.Context, url string) {
 		if err := cmd.Run(); err == nil {
 			log.Printf("stream for %s ended\n", url)
 		}
+
+		go func() {
+			if err := convertStream(time, url); err != nil {
+				log.Printf("error while converting stream %s: %s\n", outputFile, err)
+				return
+			}
+
+			log.Printf("done converting stream %s\n", outputFile)
+		}()
 	}
 }
 
