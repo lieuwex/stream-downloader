@@ -9,16 +9,20 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"runtime"
-	"strconv"
 	"stream-downloader/lockmap"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 )
 
-const checkInterval = 30 * time.Second
+const (
+	checkInterval = 30 * time.Second
+
+	codec      = "libx264"
+	resolution = "1280x720"
+)
 
 var (
 	mainDir string
@@ -29,57 +33,17 @@ func getListPath() string {
 	return mainDir + "streamlist"
 }
 
-func getOutputFile(time time.Time, url string, tmp bool) (string, error) {
+func getOutputFile(url string) (string, error) {
 	ident := path.Base(url)
 
 	folder := filepath.Join(mainDir, ident)
-	if tmp {
-		folder = filepath.Join(folder, "tmp")
-	}
-
 	if err := os.MkdirAll(folder, 0700); err != nil && !os.IsExist(err) {
 		return "", err
 	}
 
-	var ext string
-	if tmp {
-		ext = "ts"
-	} else {
-		ext = "mp4"
-	}
-
-	fileName := fmt.Sprintf("%d.%s", time.Unix(), ext)
+	fileName := fmt.Sprintf("%d.mp4", time.Now().Unix())
 
 	return filepath.Join(folder, fileName), nil
-}
-
-func convertStream(time time.Time, url string) error {
-	inputFile, err := getOutputFile(time, url, true)
-	if err != nil {
-		return err
-	}
-
-	outputFile, err := getOutputFile(time, url, false)
-	if err != nil {
-		return err
-	}
-
-	cmd := exec.Command(
-		"ffmpeg",
-		"-i",
-		inputFile,
-		"-c:v",
-		"libx264",
-		"-threads",
-		strconv.Itoa(runtime.NumCPU()),
-		outputFile,
-	)
-
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	return os.Remove(inputFile)
 }
 
 func handleStream(ctx context.Context, url string) {
@@ -96,33 +60,51 @@ func handleStream(ctx context.Context, url string) {
 
 		log.Printf("checking for %s\n", url)
 
-		time := time.Now()
-		outputFile, err := getOutputFile(time, url, true)
+		outputFile, err := getOutputFile(url)
 		if err != nil {
 			log.Fatalf("error while creating folder for %s: %s\n", url, err.Error())
 			return
 		}
 
-		cmd := exec.Command(
+		checkCmd := exec.Command(
+			"streamlink",
+			"--twitch-disable-hosting",
+			url,
+		)
+		checkCmd.Start()
+		state, _ := checkCmd.Process.Wait()
+		waitStatus := state.Sys().(syscall.WaitStatus)
+		if waitStatus.ExitStatus() != 0 {
+			// stream not live
+			continue
+		}
+
+		streamlinkCmd := exec.Command(
 			"streamlink",
 			"--twitch-disable-hosting",
 			url,
 			"1080p,720p,best",
-			"-o",
+			"-O",
+		)
+		ffmpegCmd := exec.Command(
+			"ffmpeg",
+			"-i",
+			"pipe:0",
+			"-threads",
+			"0",
+			"-c:v",
+			codec,
+			"-s:v",
+			resolution,
 			outputFile,
 		)
-		if err := cmd.Run(); err == nil {
+
+		ffmpegCmd.Stdin, _ = streamlinkCmd.StdoutPipe()
+		ffmpegCmd.Start()
+
+		if err := streamlinkCmd.Run(); err == nil {
 			log.Printf("stream for %s ended\n", url)
 		}
-
-		go func() {
-			if err := convertStream(time, url); err != nil {
-				log.Printf("error while converting stream %s: %s\n", outputFile, err)
-				return
-			}
-
-			log.Printf("done converting stream %s\n", outputFile)
-		}()
 	}
 }
 
