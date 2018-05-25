@@ -41,7 +41,7 @@ func getOutputFile(url string) (string, error) {
 		return "", err
 	}
 
-	fileName := fmt.Sprintf("%d.mp4", time.Now().Unix())
+	fileName := fmt.Sprintf("%s.mp4", time.Now().Format("2006-01-02 15:04:05"))
 
 	return filepath.Join(folder, fileName), nil
 }
