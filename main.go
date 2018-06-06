@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"stream-downloader/lockmap"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -19,6 +18,7 @@ import (
 
 const (
 	checkInterval = 30 * time.Second
+	queueSize     = 50
 
 	codec      = "libx264"
 	resolution = "1280x720"
@@ -27,13 +27,10 @@ const (
 var (
 	mainDir string
 	lm      = lockmap.New()
+	queue   = makeQueue(queueSize)
 )
 
-func getListPath() string {
-	return mainDir + "streamlist"
-}
-
-func getOutputFile(url string) (string, error) {
+func getFolder(url string) (string, error) {
 	ident := path.Base(url)
 
 	folder := filepath.Join(mainDir, ident)
@@ -41,7 +38,16 @@ func getOutputFile(url string) (string, error) {
 		return "", err
 	}
 
-	fileName := fmt.Sprintf("%s.mp4", time.Now().Format("2006-01-02 15:04:05"))
+	return folder, nil
+}
+
+func getOutputFile(url string) (string, error) {
+	folder, err := getFolder(url)
+	if err != nil {
+		return "", err
+	}
+
+	fileName := fmt.Sprintf("%s.ts", time.Now().Format("2006-01-02 15:04:05"))
 
 	return filepath.Join(folder, fileName), nil
 }
@@ -66,44 +72,18 @@ func handleStream(ctx context.Context, url string) {
 			return
 		}
 
-		checkCmd := exec.Command(
-			"streamlink",
-			"--twitch-disable-hosting",
-			url,
-		)
-		checkCmd.Start()
-		state, _ := checkCmd.Process.Wait()
-		waitStatus := state.Sys().(syscall.WaitStatus)
-		if waitStatus.ExitStatus() != 0 {
-			// stream not live
-			continue
-		}
-
 		streamlinkCmd := exec.Command(
 			"streamlink",
 			"--twitch-disable-hosting",
 			url,
 			"1080p,720p,best",
-			"-O",
-		)
-		ffmpegCmd := exec.Command(
-			"ffmpeg",
-			"-i",
-			"pipe:0",
-			"-threads",
-			"0",
-			"-c:v",
-			codec,
-			"-s:v",
-			resolution,
+			"-o",
 			outputFile,
 		)
 
-		ffmpegCmd.Stdin, _ = streamlinkCmd.StdoutPipe()
-		ffmpegCmd.Start()
-
 		if err := streamlinkCmd.Run(); err == nil {
 			log.Printf("stream for %s ended\n", url)
+			queue <- outputFile
 		}
 	}
 }
@@ -119,14 +99,27 @@ func parseStreamList(path string) ([]string, error) {
 }
 
 func main() {
+	mainDir = os.Args[1]
+
+	files, err := readDirRecursive(mainDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, f := range files {
+		if filepath.Ext(f) != ".ts" {
+			continue
+		}
+
+		queue <- f
+	}
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	mainDir = os.Args[1]
-
-	listPath := getListPath()
+	listPath := mainDir + "streamlist"
 	watcher.Add(listPath)
 
 	for {
