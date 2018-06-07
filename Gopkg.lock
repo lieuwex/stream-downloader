@@ -9,13 +9,19 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/lieuwex/times"
+  packages = ["."]
+  revision = "46d7d06156294cd3c59e269b0f0216292b4ffff4"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "cbbc999da32df943dac6cd71eb3ee39e1d7838b9"
+  revision = "9527bec2660bd847c050fda93a0f0c6dee0800bb"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e0edf3d4986c8474d505939b600763942046c8851c704522a5f1ba7b4172abfd"
+  inputs-digest = "324641d5d09c39c17326d9b4d3d0d1643364e6692ddbbd9f4c7451bad203d635"
   solver-name = "gps-cdcl"
   solver-version = 1

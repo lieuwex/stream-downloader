@@ -14,6 +14,11 @@ func convertStreamFile(input string) error {
 	timestamp := strings.TrimSuffix(inputFile, filepath.Ext(inputFile))
 	output := filepath.Join(dir, timestamp+".mp4")
 
+	ts, err := getTimes(input)
+	if err != nil {
+		return err
+	}
+
 	log.Printf("starting converting %s to %s", input, output)
 
 	if err := exec.Command(
@@ -29,6 +34,10 @@ func convertStreamFile(input string) error {
 		resolution,
 		output,
 	).Run(); err != nil {
+		return err
+	}
+
+	if err := setTimes(output, ts); err != nil {
 		return err
 	}
 
