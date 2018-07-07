@@ -6,10 +6,10 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"stream-downloader/lockmap"
+	"stream-downloader/streamlink"
 	"strings"
 	"time"
 
@@ -66,25 +66,30 @@ func handleStream(ctx context.Context, url string) {
 
 		log.Printf("checking for %s\n", url)
 
+		online, err := streamlink.IsOnline(url)
+		if err != nil {
+			log.Printf("error while checking if %s is online: %s\n", url, err)
+			continue
+		} else if !online {
+			log.Printf("%s is offline\n", url)
+			continue
+		}
+
 		outputFile, err := getOutputFile(url)
 		if err != nil {
 			log.Fatalf("error while creating folder for %s: %s\n", url, err.Error())
 			return
 		}
 
-		streamlinkCmd := exec.Command(
-			"streamlink",
-			"--twitch-disable-hosting",
-			url,
-			"1080p,720p,best",
-			"-o",
-			outputFile,
-		)
+		log.Printf("starting download for %s\n", url)
 
-		if err := streamlinkCmd.Run(); err == nil {
-			log.Printf("stream for %s ended\n", url)
-			queue <- outputFile
+		cmd := streamlink.GetDownloadCommand(url, outputFile)
+		if err := cmd.Run(); err != nil {
+			log.Printf("error while running streamlink for %s: %s\n", url, err)
 		}
+
+		log.Printf("stream for %s ended\n", url)
+		queue <- outputFile
 	}
 }
 
