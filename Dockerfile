@@ -15,10 +15,7 @@ RUN GOOS=linux go build -o stream-downloader
 FROM python:3-alpine AS runner
 
 # Update apk repositories
-RUN echo "http://dl-2.alpinelinux.org/alpine/edge/main" > /etc/apk/repositories && \
-	echo "http://dl-2.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
-	echo "http://dl-2.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
-	apk update
+RUN apk update
 
 # Install ffmpeg
 RUN apk add ffmpeg --no-cache
@@ -26,7 +23,8 @@ RUN apk add ffmpeg --no-cache
 # Install streamlink
 RUN apk add gcc musl-dev --no-cache && pip install streamlink
 
-# Copy stream-downloader
+# Copy stream-downloader and install deps
+RUN apk add tzdata
 COPY --from=builder /go/src/stream-downloader /bin/
 
 # Remove unneeded stuff
