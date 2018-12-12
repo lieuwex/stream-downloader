@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"stream-downloader/lockmap"
 	"stream-downloader/streamlink"
 	"strings"
@@ -25,9 +26,11 @@ const (
 )
 
 var (
-	mainDir string
-	lm      = lockmap.New()
-	queue   = makeQueue(queueSize)
+	converterThreadCount = 0
+	mainDir              string
+
+	lm    = lockmap.New()
+	queue = makeQueue(queueSize)
 )
 
 func getFolder(url string) (string, error) {
@@ -105,6 +108,13 @@ func parseStreamList(path string) ([]string, error) {
 
 func main() {
 	mainDir = os.Args[1]
+	if val := os.Getenv("CONV_NUM_THREADS"); val != "" {
+		var err error
+		converterThreadCount, err = strconv.Atoi(val)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	files, err := readDirRecursive(mainDir)
 	if err != nil {

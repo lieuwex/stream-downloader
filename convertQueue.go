@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -22,7 +23,7 @@ func convertStreamFile(input string) error {
 		"-i",
 		input,
 		"-threads",
-		"0",
+		strconv.Itoa(converterThreadCount),
 		"-c:v",
 		codec,
 		"-s:v",
