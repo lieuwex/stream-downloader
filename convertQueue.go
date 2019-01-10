@@ -18,6 +18,10 @@ func convertStreamFile(input string) error {
 	log.Printf("starting converting %s to %s", input, output)
 
 	if err := exec.Command(
+		"nice",
+		"-n",
+		"19",
+
 		"ffmpeg",
 		"-y",
 		"-i",
