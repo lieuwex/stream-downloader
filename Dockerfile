@@ -1,34 +1,30 @@
-FROM golang:1.10.1-alpine3.7 AS builder
+FROM golang:1.11.4-alpine AS builder
 
+# Install dep
 RUN apk update && apk add git
 RUN go get -u github.com/golang/dep/cmd/dep
 
-RUN mkdir -p /go/src/stream-downloader
-WORKDIR /go/src/stream-downloader
-COPY . .
+# Install dependencies
+COPY Gopkg.lock Gopkg.toml /go/src/stream-downloader/
+WORKDIR /go/src/stream-downloader/
+RUN dep ensure -vendor-only
 
-RUN dep ensure
-RUN GOOS=linux go build -o stream-downloader
+COPY . .
+RUN go build -o /bin/stream-downloader
 
 #####
 
 FROM python:3-alpine AS runner
 
-# Update apk repositories
-RUN apk update
-
-# Install ffmpeg
-RUN apk add ffmpeg --no-cache
-
-# Install streamlink
-RUN apk add gcc musl-dev --no-cache && pip install streamlink
-
-# Copy stream-downloader and install deps
-RUN apk add tzdata
-COPY --from=builder /go/src/stream-downloader /bin/
-
-# Remove unneeded stuff
-RUN apk del --purge --force \
+RUN apk update \
+	&& apk add --no-cache \
+		ffmpeg \
+		tzdata \
+		gcc \
+		musl-dev \
+	&& pip install \
+		streamlink \
+	&& apk del --purge --force \
 		linux-headers \
 		binutils-gold \
 		gnupg \
@@ -36,10 +32,13 @@ RUN apk del --purge --force \
 		libc-utils \
 		gcc \
 		musl-dev \
-	&& \
-	rm -rf /var/lib/apt/lists/* \
+	&& rm -rf /var/lib/apt/lists/* \
 		/var/cache/apk/* \
 		/usr/share/man \
 		/tmp/*
 
+# Copy stream-downloader
+COPY --from=builder /bin/stream-downloader /bin/stream-downloader
+
+WORKDIR /root
 CMD ["/bin/stream-downloader", "/root/"]
