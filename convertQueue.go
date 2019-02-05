@@ -54,7 +54,8 @@ func makeQueue(size int) convertQueue {
 	go func() {
 		for path := range ch {
 			if err := convertStreamFile(path); err != nil {
-				panic(err)
+				log.Printf("error while converting %s: %s, trying again.", path, err)
+				ch <- path
 			}
 		}
 	}()
