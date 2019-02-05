@@ -37,7 +37,7 @@ func getFolder(url string) (string, error) {
 	ident := path.Base(url)
 
 	folder := filepath.Join(mainDir, ident)
-	if err := os.MkdirAll(folder, 0700); err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(folder, 0700); err != nil {
 		return "", err
 	}
 
@@ -69,8 +69,7 @@ func handleStream(ctx context.Context, url string) {
 
 		log.Printf("checking for %s\n", url)
 
-		online, err := streamlink.IsOnline(url)
-		if err != nil {
+		if online, err := streamlink.IsOnline(url); err != nil {
 			log.Printf("error while checking if %s is online: %s\n", url, err)
 			continue
 		} else if !online {
@@ -80,7 +79,7 @@ func handleStream(ctx context.Context, url string) {
 
 		outputFile, err := getOutputFile(url)
 		if err != nil {
-			log.Fatalf("error while creating folder for %s: %s\n", url, err.Error())
+			log.Fatalf("error while creating folder for %s: %s\n", url, err)
 			return
 		}
 
@@ -112,7 +111,7 @@ func main() {
 		var err error
 		converterThreadCount, err = strconv.Atoi(val)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}
 

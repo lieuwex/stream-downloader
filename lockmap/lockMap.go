@@ -4,8 +4,8 @@ import "sync"
 
 // A LockMap is used to lock various things represented by strings.
 type LockMap struct {
-	mutex sync.RWMutex
-	m     map[string]*sync.Mutex
+	mu sync.RWMutex
+	m  map[string]*sync.Mutex
 }
 
 // New makes a new LockMap.
@@ -16,15 +16,15 @@ func New() *LockMap {
 }
 
 func (lm *LockMap) getLock(str string) (mutex *sync.Mutex, found bool) {
-	lm.mutex.RLock()
-	defer lm.mutex.RUnlock()
+	lm.mu.RLock()
+	defer lm.mu.RUnlock()
 
 	mutex, found = lm.m[str]
 	return mutex, found
 }
 func (lm *LockMap) addLock(str string) *sync.Mutex {
-	lm.mutex.Lock()
-	defer lm.mutex.Unlock()
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
 
 	mutex := &sync.Mutex{}
 	lm.m[str] = mutex
