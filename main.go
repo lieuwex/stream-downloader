@@ -21,7 +21,7 @@ const (
 	checkInterval = 30 * time.Second
 	queueSize     = 50
 
-	codec      = "libx264"
+	codec      = "libx265"
 	resolution = "1280x720"
 )
 
