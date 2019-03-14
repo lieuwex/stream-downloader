@@ -88,10 +88,10 @@ func handleStream(ctx context.Context, url string) {
 		cmd := streamlink.GetDownloadCommand(url, outputFile)
 		if err := cmd.Run(); err != nil {
 			log.Printf("error while running streamlink for %s: %s\n", url, err)
-		} else {
-			log.Printf("stream for %s successfully ended\n", url)
-			queue <- outputFile
 		}
+
+		log.Printf("stream for %s ended\n", url)
+		queue <- outputFile
 	}
 }
 
