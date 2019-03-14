@@ -91,7 +91,7 @@ func handleStream(ctx context.Context, url string) {
 		}
 
 		log.Printf("stream for %s ended\n", url)
-		queue <- outputFile
+		queue <- convertItem{outputFile, 0}
 	}
 }
 
@@ -125,7 +125,7 @@ func main() {
 			continue
 		}
 
-		queue <- f
+		queue <- convertItem{f, 0}
 	}
 
 	watcher, err := fsnotify.NewWatcher()

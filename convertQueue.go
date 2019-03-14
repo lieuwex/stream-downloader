@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+const maxTryCount = 5
+
 func convertStreamFile(input string) error {
 	dir, inputFile := filepath.Split(input)
 
@@ -46,16 +48,25 @@ func convertStreamFile(input string) error {
 	return nil
 }
 
-type convertQueue chan string
+type convertItem struct {
+	Path     string
+	TryCount uint
+}
+type convertQueue chan convertItem
 
 func makeQueue(size int) convertQueue {
-	ch := make(chan string, size)
+	ch := make(chan convertItem, size)
 
 	go func() {
-		for path := range ch {
-			if err := convertStreamFile(path); err != nil {
-				log.Printf("error while converting %s: %s, trying again.", path, err)
-				ch <- path
+		for item := range ch {
+			if item.TryCount == maxTryCount {
+				log.Printf("too much tries for %s", item.Path)
+				continue
+			}
+
+			if err := convertStreamFile(item.Path); err != nil {
+				log.Printf("error while converting %s: %s, trying again", item.Path, err)
+				ch <- convertItem{item.Path, item.TryCount + 1}
 			}
 		}
 	}()
