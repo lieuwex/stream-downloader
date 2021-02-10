@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"stream-downloader/chat"
 	"stream-downloader/lockmap"
 	"stream-downloader/streamlink"
 	"strings"
@@ -55,9 +57,18 @@ func getOutputFile(url string) (string, error) {
 	return filepath.Join(folder, fileName), nil
 }
 
-func handleStream(ctx context.Context, url string) {
+func handleStream(ctx context.Context, chatClient *chat.Client, url string) {
 	unlock := lm.Lock(url)
 	defer unlock()
+
+	twitchUsername := strings.TrimPrefix(url, "https://www.twitch.tv/")
+	if twitchUsername == url {
+		// stream url is not a twitch url
+		twitchUsername = ""
+	}
+	if chatClient == nil {
+		twitchUsername = ""
+	}
 
 	for {
 		select {
@@ -83,7 +94,22 @@ func handleStream(ctx context.Context, url string) {
 			return
 		}
 
-		log.Printf("starting download for %s\n", url)
+		log.Printf("starting download for %s (twitchUsername = %s)\n", url, twitchUsername)
+
+		var f *os.File
+		if twitchUsername != "" {
+			var err error
+			f, err = os.Create(strings.Replace(outputFile, ".ts", ".txt", 1))
+			if err != nil {
+				log.Printf("error while create chat output file: %s", err)
+			} else {
+				encoder := json.NewEncoder(f)
+
+				chatClient.AddChatFunction(twitchUsername, func(msg chat.Message) {
+					encoder.Encode(msg)
+				})
+			}
+		}
 
 		cmd := streamlink.GetDownloadCommand(url, outputFile)
 		if err := cmd.Run(); err != nil {
@@ -92,6 +118,11 @@ func handleStream(ctx context.Context, url string) {
 
 		log.Printf("stream for %s ended\n", url)
 		queue <- convertItem{outputFile, 0}
+
+		if f != nil {
+			chatClient.RemoveChatFunction(twitchUsername)
+			f.Close()
+		}
 	}
 }
 
@@ -113,6 +144,23 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	var chatClient *chat.Client
+	if val := os.Getenv("TWITCH_AUTH"); val != "" {
+		splitted := strings.SplitN(val, ":", 2)
+		username := splitted[0]
+		apiKey := splitted[1]
+
+		log.Printf("created chat client for username %s", username)
+
+		chatClient = chat.CreateClient()
+		go func() {
+			err := chatClient.Connect(username, apiKey)
+			if err != nil {
+				log.Printf("error connecting to twitch irc: %s", err)
+			}
+		}()
 	}
 
 	files, err := readDirRecursive(mainDir)
@@ -147,7 +195,7 @@ func main() {
 		log.Printf("read %d stream(s) from stream list\n", len(lines))
 
 		for _, url := range lines {
-			go handleStream(ctx, url)
+			go handleStream(ctx, chatClient, url)
 		}
 
 		<-watcher.Events
