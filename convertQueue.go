@@ -41,6 +41,8 @@ func convertStreamFile(input string) error {
 
 	log.Printf("done converting %s to %s", input, output)
 
+	// TODO: touch -r
+
 	if err := os.Remove(input); err != nil {
 		log.Printf("error while removing input file %s: %s", input, err)
 	}
