@@ -25,7 +25,7 @@ func convertStreamFile(settings Settings, input string) error {
 
 	log.Printf("starting converting %s to %s", input, output)
 
-	vp9Settings, err := GetSttingsByFile(input)
+	vp9Settings, err := GetSettingsByFile(input)
 	if err != nil {
 		log.Printf("error getting vp9 settings: %s. Falling back on default settings.", err)
 		vp9Settings = Default

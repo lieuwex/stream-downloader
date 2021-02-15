@@ -57,7 +57,7 @@ func GetSettings(width, height, fps int) *VP9Settings {
 	}
 }
 
-func GetSttingsByFile(path string) (*VP9Settings, error) {
+func GetSettingsByFile(path string) (*VP9Settings, error) {
 	b, err := exec.Command(
 		"ffprobe",
 		"-select_streams",
