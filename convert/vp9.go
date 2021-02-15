@@ -72,7 +72,9 @@ func GetSettingsByFile(path string) (*VP9Settings, error) {
 		return nil, err
 	}
 
-	items := strings.Split(string(b), ",")
+	line := strings.Split(string(b), "\n")[0]
+	items := strings.Split(line, ",")
+
 	width, err := strconv.Atoi(items[0])
 	if err != nil {
 		return nil, err
