@@ -1,8 +1,8 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -15,9 +15,15 @@ func convertStreamFile(input string) error {
 	dir, inputFile := filepath.Split(input)
 
 	timestamp := strings.TrimSuffix(inputFile, filepath.Ext(inputFile))
-	output := filepath.Join(dir, timestamp+".mp4")
+	output := filepath.Join(dir, timestamp+".mkv")
 
 	log.Printf("starting converting %s to %s", input, output)
+
+	scaleFilter := fmt.Sprintf(
+		"scale='min(%d,iw)':min'(%d,ih)':force_original_aspect_ratio=decrease",
+		videoWidth,
+		videoHeight,
+	)
 
 	if err := exec.Command(
 		"nice",
@@ -30,10 +36,14 @@ func convertStreamFile(input string) error {
 		input,
 		"-threads",
 		strconv.Itoa(converterThreadCount),
+		"-c:a",
+		audioCodec,
 		"-c:v",
-		codec,
-		"-s:v",
-		resolution,
+		videoCodec,
+		"-preset",
+		videoPreset,
+		"-filter:v",
+		scaleFilter,
 		output,
 	).Run(); err != nil {
 		return err

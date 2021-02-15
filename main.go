@@ -23,8 +23,11 @@ const (
 	checkInterval = 30 * time.Second
 	queueSize     = 50
 
-	codec      = "libx264"
-	resolution = "1280x720"
+	audioCodec    = "libopus"
+	videoCodec    = "libx265"
+	videoPreset   = "slow"
+	videoWidth    = 1920
+	videoHeight   = 1080
 )
 
 var (

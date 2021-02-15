@@ -30,7 +30,7 @@ func GetDownloadCommand(url, outputFile string) *exec.Cmd {
 		"streamlink",
 		"--twitch-disable-hosting",
 		url,
-		"1080p,720p,best",
+		"best",
 		"-o",
 		outputFile,
 	)
