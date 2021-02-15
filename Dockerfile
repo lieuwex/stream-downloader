@@ -1,4 +1,4 @@
-FROM golang:1.11.4-alpine AS builder
+FROM golang:1.15.5-alpine AS builder
 
 # Install dep
 RUN apk update && apk add git
