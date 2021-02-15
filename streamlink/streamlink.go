@@ -29,6 +29,7 @@ func GetDownloadCommand(url, outputFile string) *exec.Cmd {
 	return exec.Command(
 		"streamlink",
 		"--twitch-disable-hosting",
+		"--twitch-disable-ads",
 		url,
 		"best",
 		"-o",
