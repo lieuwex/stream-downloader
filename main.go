@@ -9,8 +9,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"stream-downloader/chat"
+	"stream-downloader/convert"
 	"stream-downloader/lockmap"
 	"stream-downloader/streamlink"
 	"strings"
@@ -21,21 +21,20 @@ import (
 
 const (
 	checkInterval = 30 * time.Second
-	queueSize     = 50
-
-	audioCodec    = "libopus"
-	videoCodec    = "libx265"
-	videoPreset   = "slow"
-	videoWidth    = 1920
-	videoHeight   = 1080
 )
 
 var (
-	converterThreadCount = 0
-	mainDir              string
+	mainDir string
 
 	lm    = lockmap.New()
-	queue = makeQueue(queueSize)
+	queue = convert.MakeQueue(convert.Settings{
+		Size: 50,
+
+		ThreadCount: 0,
+
+		VideoWidth:  1920,
+		VideoHeight: 1080,
+	})
 )
 
 func getFolder(url string) (string, error) {
@@ -120,7 +119,7 @@ func handleStream(ctx context.Context, chatClient *chat.Client, url string) {
 		}
 
 		log.Printf("stream for %s ended\n", url)
-		queue <- convertItem{outputFile, 0}
+		queue <- convert.Item{outputFile, 0}
 
 		if f != nil {
 			chatClient.RemoveChatFunction(twitchUsername)
@@ -141,13 +140,6 @@ func parseStreamList(path string) ([]string, error) {
 
 func main() {
 	mainDir = os.Args[1]
-	if val := os.Getenv("CONV_NUM_THREADS"); val != "" {
-		var err error
-		converterThreadCount, err = strconv.Atoi(val)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 
 	var chatClient *chat.Client
 	if val := os.Getenv("TWITCH_AUTH"); val != "" {
@@ -176,7 +168,7 @@ func main() {
 			continue
 		}
 
-		queue <- convertItem{f, 0}
+		queue <- convert.Item{f, 0}
 	}
 
 	watcher, err := fsnotify.NewWatcher()

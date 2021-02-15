@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+input=$1
+thread_count=$2
+crf=$3
+min_rate=$4
+target_rate=$5
+max_rate=$6
+width=$7
+height=$8
+output=$9
+
+tmp_dir="$(mktemp -d)"
+
+cd "$tmp_dir"
+
+nice -n19 ffmpeg -i "$input" \
+	-tile-columns 2 -row-mt 1 -threads $thread_count \
+	-g 240 -quality good \
+	-crf $crf -b:v "${target_rate}k" -minrate "${min_rate}k" -maxrate "${max_rate}k" \
+	-c:v libvpx-vp9 -an \
+	-filter:v "scale='min(${width},iw)':min'(${height},ih)':force_original_aspect_ratio=decrease" \
+	-pass 1 \
+	-y "${output}" && \
+nice -n19 ffmpeg -i "$input" \
+	-tile-columns 2 -row-mt 1 -threads $thread_count \
+	-g 240 -quality good \
+	-crf $crf -b:v "${target_rate}k" -minrate "${min_rate}k" -maxrate "${max_rate}k" \
+	-c:v libvpx-vp9 -c:a libopus \
+	-filter:v "scale='min(${width},iw)':min'(${height},ih)':force_original_aspect_ratio=decrease" \
+	-pass 2 \
+	-speed 2 \
+	-y "${output}"
+
+cd -
+rm -rf "$tmp_dir"

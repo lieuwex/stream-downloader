@@ -22,6 +22,7 @@ RUN apk update \
 		tzdata \
 		gcc \
 		musl-dev \
+		bash \
 	&& pip install \
 		streamlink \
 	&& apk del --purge --force \
@@ -36,6 +37,9 @@ RUN apk update \
 		/var/cache/apk/* \
 		/usr/share/man \
 		/tmp/*
+
+# Copy convert script
+COPY ./convert/convert /bin/convert
 
 # Copy stream-downloader
 COPY --from=builder /bin/stream-downloader /bin/stream-downloader
