@@ -13,8 +13,6 @@ const maxTryCount = 5
 type Settings struct {
 	Size int
 
-	ThreadCount int
-
 	VideoWidth  int
 	VideoHeight int
 }
@@ -36,7 +34,6 @@ func convertStreamFile(settings Settings, input string) error {
 		"/bin/convert",
 
 		input,
-		strconv.Itoa(settings.ThreadCount),
 		strconv.Itoa(vp9Settings.CRF),
 		strconv.Itoa(vp9Settings.MinBirate),
 		strconv.Itoa(vp9Settings.TargetBitrate),

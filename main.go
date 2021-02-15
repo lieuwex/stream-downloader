@@ -30,8 +30,6 @@ var (
 	queue = convert.MakeQueue(convert.Settings{
 		Size: 50,
 
-		ThreadCount: 0,
-
 		VideoWidth:  1920,
 		VideoHeight: 1080,
 	})

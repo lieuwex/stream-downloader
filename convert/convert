@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
 
 input=$1
-thread_count=$2
-crf=$3
-min_rate=$4
-target_rate=$5
-max_rate=$6
-width=$7
-height=$8
-output=$9
+crf=$2
+min_rate=$3
+target_rate=$4
+max_rate=$5
+width=$6
+height=$7
+output=$8
 
 tmp_dir="$(mktemp -d)"
 
 cd "$tmp_dir"
 
 nice -n19 ffmpeg -i "$input" \
-	-tile-columns 2 -row-mt 1 -threads $thread_count \
+	-tile-columns 2 -tile-rows 1 -row-mt 1 -threads 8 \
 	-g 240 -quality good \
 	-crf $crf -b:v "${target_rate}k" -minrate "${min_rate}k" -maxrate "${max_rate}k" \
 	-c:v libvpx-vp9 -an \
@@ -23,7 +22,7 @@ nice -n19 ffmpeg -i "$input" \
 	-pass 1 \
 	-y "${output}" && \
 nice -n19 ffmpeg -i "$input" \
-	-tile-columns 2 -row-mt 1 -threads $thread_count \
+	-tile-columns 2 -tile-rows 1 -row-mt 1 -threads 8 \
 	-g 240 -quality good \
 	-crf $crf -b:v "${target_rate}k" -minrate "${min_rate}k" -maxrate "${max_rate}k" \
 	-c:v libvpx-vp9 -c:a libopus \
