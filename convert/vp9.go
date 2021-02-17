@@ -16,7 +16,7 @@ type VP9Settings struct {
 }
 
 var Default = &VP9Settings{
-	CRF:           32,
+	CRF:           37,
 	MinBirate:     0,
 	TargetBitrate: 2800,
 	MaxBitrate:    4350,
@@ -27,7 +27,7 @@ func GetSettings(width, height, fps int) *VP9Settings {
 		// 720p30
 		log.Println("using settings for 720p30")
 		return &VP9Settings{
-			CRF:           33,
+			CRF:           38,
 			MinBirate:     0,
 			TargetBitrate: 1800,
 			MaxBitrate:    2610,
@@ -36,7 +36,7 @@ func GetSettings(width, height, fps int) *VP9Settings {
 		// 720p60
 		log.Println("using settings for 720p60")
 		return &VP9Settings{
-			CRF:           33,
+			CRF:           38,
 			MinBirate:     0,
 			TargetBitrate: 1800,
 			MaxBitrate:    2610,
@@ -45,7 +45,7 @@ func GetSettings(width, height, fps int) *VP9Settings {
 		// 1080p30
 		log.Println("using settings for 1080p30")
 		return &VP9Settings{
-			CRF:           32,
+			CRF:           37,
 			MinBirate:     0,
 			TargetBitrate: 1800,
 			MaxBitrate:    2610,
