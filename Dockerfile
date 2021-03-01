@@ -23,8 +23,10 @@ RUN apk update \
 		gcc \
 		musl-dev \
 		bash \
+		libvpx \
 	&& pip install \
 		streamlink \
+		Av1an \
 	&& apk del --purge --force \
 		linux-headers \
 		binutils-gold \

@@ -9,27 +9,6 @@ max_width=$6
 max_height=$7
 output=$8
 
-tmp_dir="$(mktemp -d)"
-
-cd "$tmp_dir"
-
-nice -n19 ffmpeg -i "$input" \
-	-tile-columns 2 -tile-rows 1 -row-mt 1 -threads 8 \
-	-g 240 -quality good \
-	-crf $crf -b:v "${target_rate}k" -minrate "${min_rate}k" -maxrate "${max_rate}k" \
-	-c:v libvpx-vp9 -an \
-	-filter:v "scale='min(${max_width},iw)':min'(${max_height},ih)':force_original_aspect_ratio=decrease" \
-	-pass 1 \
-	-y "${output}" && \
-nice -n19 ffmpeg -i "$input" \
-	-tile-columns 2 -tile-rows 1 -row-mt 1 -threads 8 \
-	-g 240 -quality good \
-	-crf $crf -b:v "${target_rate}k" -minrate "${min_rate}k" -maxrate "${max_rate}k" \
-	-c:v libvpx-vp9 -c:a libopus \
-	-filter:v "scale='min(${max_width},iw)':min'(${max_height},ih)':force_original_aspect_ratio=decrease" \
-	-pass 2 \
-	-speed 2 \
-	-y "${output}"
-
-cd -
-rm -rf "$tmp_dir"
+nice -n19 av1an -i "$input" \
+	-enc vpx -v "--codec=vp9 --end-usage=cq --cq-level=${crf} --target-bitrate=${max_rate} --good --cpu-used=2 --tile-columns=2 --tile-rows=1" \
+	--webm --audio_params='-c:a libopus' -r -fmt yuv420p
