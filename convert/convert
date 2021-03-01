@@ -5,8 +5,8 @@ crf=$2
 min_rate=$3
 target_rate=$4
 max_rate=$5
-width=$6
-height=$7
+max_width=$6
+max_height=$7
 output=$8
 
 tmp_dir="$(mktemp -d)"
@@ -18,7 +18,7 @@ nice -n19 ffmpeg -i "$input" \
 	-g 240 -quality good \
 	-crf $crf -b:v "${target_rate}k" -minrate "${min_rate}k" -maxrate "${max_rate}k" \
 	-c:v libvpx-vp9 -an \
-	-filter:v "scale='min(${width},iw)':min'(${height},ih)':force_original_aspect_ratio=decrease" \
+	-filter:v "scale='min(${max_width},iw)':min'(${max_height},ih)':force_original_aspect_ratio=decrease" \
 	-pass 1 \
 	-y "${output}" && \
 nice -n19 ffmpeg -i "$input" \
@@ -26,7 +26,7 @@ nice -n19 ffmpeg -i "$input" \
 	-g 240 -quality good \
 	-crf $crf -b:v "${target_rate}k" -minrate "${min_rate}k" -maxrate "${max_rate}k" \
 	-c:v libvpx-vp9 -c:a libopus \
-	-filter:v "scale='min(${width},iw)':min'(${height},ih)':force_original_aspect_ratio=decrease" \
+	-filter:v "scale='min(${max_width},iw)':min'(${max_height},ih)':force_original_aspect_ratio=decrease" \
 	-pass 2 \
 	-speed 2 \
 	-y "${output}"
