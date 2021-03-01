@@ -8,7 +8,12 @@ import (
 	"strings"
 )
 
-const maxTryCount = 5
+const (
+	// retry a stream up to 5 times
+	maxTryCount = 5
+	// handle up to 4 streams at once
+	workerCount = 4
+)
 
 type Settings struct {
 	Size int
@@ -67,19 +72,21 @@ type Queue chan Item
 func MakeQueue(settings Settings) Queue {
 	ch := make(chan Item, settings.Size)
 
-	go func() {
-		for item := range ch {
-			if item.TryCount == maxTryCount {
-				log.Printf("too much tries for %s", item.Path)
-				continue
-			}
+	for i := 0; i < workerCount; i++ {
+		go func() {
+			for item := range ch {
+				if item.TryCount == maxTryCount {
+					log.Printf("too much tries for %s", item.Path)
+					continue
+				}
 
-			if err := convertStreamFile(settings, item.Path); err != nil {
-				log.Printf("error while converting %s: %s, trying again", item.Path, err)
-				ch <- Item{item.Path, item.TryCount + 1}
+				if err := convertStreamFile(settings, item.Path); err != nil {
+					log.Printf("error while converting %s: %s, trying again", item.Path, err)
+					ch <- Item{item.Path, item.TryCount + 1}
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	return ch
 }
