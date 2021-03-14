@@ -2,6 +2,7 @@ package convert
 
 import (
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -55,10 +56,11 @@ func convertStreamFile(settings Settings, input string) error {
 
 	// TODO: touch -r
 
-	log.Printf("keeping original file %s", input)
-	//if err := os.Remove(input); err != nil {
-	//	log.Printf("error while removing input file %s: %s", input, err)
-	//}
+	inputNewPath := input + ".bak"
+	log.Printf("renaming original file %s -> %s", input, inputNewPath)
+	if err := os.Rename(input, inputNewPath); err != nil {
+		log.Printf("error while renaming input file %s: %s", input, err)
+	}
 
 	return nil
 }
