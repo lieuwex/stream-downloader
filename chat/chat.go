@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -17,21 +18,26 @@ type Message struct {
 type ChatCallback func(Message)
 
 type Client struct {
+	username  string
+	apiKey    string
 	ircClient *gotirc.Client
 
 	mu    sync.Mutex
 	fnmap map[string]ChatCallback
 }
 
-func CreateClient() *Client {
+func CreateClient(username, apiKey string) *Client {
 	options := gotirc.Options{
 		Host: "irc.chat.twitch.tv",
 		Port: 6667,
 	}
 
 	client := &Client{
-		fnmap:     make(map[string]ChatCallback),
+		username:  username,
+		apiKey:    apiKey,
 		ircClient: gotirc.NewClient(options),
+
+		fnmap: make(map[string]ChatCallback),
 	}
 
 	fn := func(typ, channel, msg string, tags map[string]string) {
@@ -62,20 +68,49 @@ func CreateClient() *Client {
 	return client
 }
 
-func (c *Client) Connect(username, apiKey string) error {
-	return c.ircClient.Connect(username, apiKey)
+func (c *Client) Connect() error {
+	return c.ircClient.Connect(c.username, c.apiKey)
+}
+
+func (c *Client) rejoinChats() {
+	c.mu.Lock()
+	defer c.mu.Lock()
+
+	c.ircClient.Disconnect()
+	c.Connect()
+	for key, _ := range c.fnmap {
+		c.ircClient.Join(key)
+	}
 }
 
 func (c *Client) AddChatFunction(channel string, cb ChatCallback) {
+	defer func() {
+		if e := recover(); e != nil {
+			fmt.Println("recovered in AddChatFunction,", e)
+			fmt.Println("rejoining chats...")
+			c.rejoinChats()
+		}
+	}()
+
 	c.mu.Lock()
-	c.ircClient.Join(channel)
+	defer c.mu.Unlock()
+
 	c.fnmap[channel] = cb
-	c.mu.Unlock()
+	c.ircClient.Join(channel)
 }
 
 func (c *Client) RemoveChatFunction(channel string) {
+	defer func() {
+		if e := recover(); e != nil {
+			fmt.Println("recovered in RemoveChatFunction", e)
+			fmt.Println("rejoining chats...")
+			c.rejoinChats()
+		}
+	}()
+
 	c.mu.Lock()
-	c.ircClient.Part(channel)
+	defer c.mu.Unlock()
+
 	delete(c.fnmap, channel)
-	c.mu.Unlock()
+	c.ircClient.Part(channel)
 }
