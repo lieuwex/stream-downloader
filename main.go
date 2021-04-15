@@ -13,10 +13,13 @@ import (
 	"stream-downloader/convert"
 	"stream-downloader/lockmap"
 	"stream-downloader/streamlink"
+	"stream-downloader/twitch"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -24,7 +27,8 @@ const (
 )
 
 var (
-	mainDir string
+	mainDir  string
+	clientId string
 
 	lm    = lockmap.New()
 	queue = convert.MakeQueue(convert.Settings{
@@ -57,6 +61,86 @@ func getOutputFile(url string) (string, error) {
 	return filepath.Join(folder, fileName), nil
 }
 
+func writeYamlFile(videoPath string, info *StreamInfo) error {
+	dir, inputFile := filepath.Split(videoPath)
+
+	timestamp := strings.TrimSuffix(inputFile, filepath.Ext(inputFile))
+	filepath := filepath.Join(dir, timestamp+".yaml")
+
+	file, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+
+	enc := yaml.NewEncoder(file)
+	defer enc.Close()
+
+	return enc.Encode(info)
+}
+
+type DatapointGatherer struct {
+	ctx    context.Context
+	mu     sync.Mutex
+	cancel context.CancelFunc
+	info   StreamInfo
+}
+
+func NewDatapointGatherer() *DatapointGatherer {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &DatapointGatherer{ctx: ctx, cancel: cancel}
+}
+func (c *DatapointGatherer) Loop(twitchUsername string) {
+	if clientId == "" {
+		return
+	}
+
+	twitchClient := twitch.NewClient(clientId)
+
+	var channelId int = 0
+	switch twitchUsername {
+	case "lekkerspelen":
+		channelId = 52385053
+	case "serpentgameplay":
+		channelId = 49901658
+	}
+
+	if channelId == 0 {
+		return
+	}
+
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+
+		case <-time.After(120 * time.Second):
+		}
+
+		s, err := twitchClient.GetCurrentStream(channelId)
+		if err != nil {
+			fmt.Printf("error getting stream info: %s", err)
+		}
+
+		c.mu.Lock()
+		if c.ctx.Err() != nil {
+			return
+		}
+
+		c.info.Datapoints = append(c.info.Datapoints, StreamInfoDatapoint{
+			Title:     s.Channel.Status,
+			Viewcount: s.Viewers,
+			Game:      s.Game,
+		})
+		c.mu.Unlock()
+	}
+}
+func (c *DatapointGatherer) Done() StreamInfo {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cancel()
+	return c.info
+}
+
 func handleStream(ctx context.Context, chatClient *chat.Client, url string) {
 	unlock := lm.Lock(url)
 	defer unlock()
@@ -66,9 +150,8 @@ func handleStream(ctx context.Context, chatClient *chat.Client, url string) {
 		// stream url is not a twitch url
 		twitchUsername = ""
 	}
-	if chatClient == nil {
-		twitchUsername = ""
-	}
+
+	hasChat := chatClient != nil && twitchUsername != ""
 
 	for {
 		select {
@@ -94,10 +177,13 @@ func handleStream(ctx context.Context, chatClient *chat.Client, url string) {
 			return
 		}
 
-		log.Printf("starting download for %s (twitchUsername = %s)\n", url, twitchUsername)
+		log.Printf("starting download for %s (twitchUsername = %s, hasChat = %t)\n", url, twitchUsername, hasChat)
+
+		gatherer := NewDatapointGatherer()
+		go gatherer.Loop(twitchUsername)
 
 		var f *os.File
-		if twitchUsername != "" {
+		if hasChat {
 			var err error
 			f, err = os.Create(strings.Replace(outputFile, ".ts", ".txt", 1))
 			if err != nil {
@@ -122,6 +208,12 @@ func handleStream(ctx context.Context, chatClient *chat.Client, url string) {
 		if f != nil {
 			chatClient.RemoveChatFunction(twitchUsername)
 			f.Close()
+		}
+
+		// write yaml information about stream to file
+		streamInfo := gatherer.Done()
+		if err := writeYamlFile(outputFile, &streamInfo); err != nil {
+			log.Printf("error while writing yaml file for %s: %s\n", url, err)
 		}
 	}
 }
@@ -155,6 +247,8 @@ func main() {
 			}
 		}()
 	}
+
+	clientId = os.Getenv("TWITCH_CLIENT_ID")
 
 	files, err := readDirRecursive(mainDir)
 	if err != nil {
