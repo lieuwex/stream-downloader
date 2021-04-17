@@ -1,14 +1,6 @@
-FROM golang:1.15.5-alpine AS builder
+FROM golang:1.16.3-alpine AS builder
 
-# Install dep
-RUN apk update && apk add git
-RUN go get -u github.com/golang/dep/cmd/dep
-
-# Install dependencies
-COPY Gopkg.lock Gopkg.toml /go/src/stream-downloader/
 WORKDIR /go/src/stream-downloader/
-RUN dep ensure -vendor-only
-
 COPY . .
 RUN go build -o /bin/stream-downloader
 
