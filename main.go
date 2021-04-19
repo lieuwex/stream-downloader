@@ -15,7 +15,6 @@ import (
 	"stream-downloader/streamlink"
 	"stream-downloader/twitch"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -78,18 +77,7 @@ func writeYamlFile(videoPath string, info *StreamInfo) error {
 	return enc.Encode(info)
 }
 
-type DatapointGatherer struct {
-	ctx    context.Context
-	mu     sync.Mutex
-	cancel context.CancelFunc
-	info   StreamInfo
-}
-
-func NewDatapointGatherer() *DatapointGatherer {
-	ctx, cancel := context.WithCancel(context.Background())
-	return &DatapointGatherer{ctx: ctx, cancel: cancel}
-}
-func (c *DatapointGatherer) Loop(twitchUsername string) {
+func twitchInfoLoop(ctx context.Context, twitchUsername, outputFile string) {
 	if clientId == "" {
 		fmt.Println("clientId == \"\"")
 		return
@@ -110,27 +98,26 @@ func (c *DatapointGatherer) Loop(twitchUsername string) {
 		return
 	}
 
+	var info StreamInfo
+
 	for {
 		s, err := twitchClient.GetCurrentStream(channelId)
 		if err != nil {
 			fmt.Printf("error getting stream info: %s", err)
 		}
 
-		c.mu.Lock()
-		if c.ctx.Err() != nil {
-			fmt.Println("context has been finished in lock, goodbye")
-			return
-		}
-
-		c.info.Datapoints = append(c.info.Datapoints, StreamInfoDatapoint{
+		info.Datapoints = append(info.Datapoints, StreamInfoDatapoint{
 			Title:     s.Channel.Status,
 			Viewcount: s.Viewers,
 			Game:      s.Game,
 		})
-		c.mu.Unlock()
+
+		if err := writeYamlFile(outputFile, &info); err != nil {
+			log.Printf("error while writing yaml file for %s: %s\n", twitchUsername, err)
+		}
 
 		select {
-		case <-c.ctx.Done():
+		case <-ctx.Done():
 			fmt.Println("context has been finished while waiting, goodbye")
 			return
 
@@ -138,14 +125,8 @@ func (c *DatapointGatherer) Loop(twitchUsername string) {
 		}
 	}
 }
-func (c *DatapointGatherer) Done() StreamInfo {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.cancel()
-	return c.info
-}
 
-func handleStream(ctx context.Context, chatClient *chat.Client, url string) {
+func handleStream(channelCtx context.Context, chatClient *chat.Client, url string) {
 	unlock := lm.Lock(url)
 	defer unlock()
 
@@ -159,7 +140,7 @@ func handleStream(ctx context.Context, chatClient *chat.Client, url string) {
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-channelCtx.Done():
 			return
 
 		case <-time.After(checkInterval):
@@ -183,8 +164,9 @@ func handleStream(ctx context.Context, chatClient *chat.Client, url string) {
 
 		log.Printf("starting download for %s (twitchUsername = %s, hasChat = %t)\n", url, twitchUsername, hasChat)
 
-		gatherer := NewDatapointGatherer()
-		go gatherer.Loop(twitchUsername)
+		streamCtx, cancelStreamCtx := context.WithCancel(channelCtx)
+
+		go twitchInfoLoop(streamCtx, twitchUsername, outputFile)
 
 		var f *os.File
 		if hasChat {
@@ -207,17 +189,12 @@ func handleStream(ctx context.Context, chatClient *chat.Client, url string) {
 		}
 
 		log.Printf("stream for %s ended\n", url)
+		cancelStreamCtx()
 		queue <- convert.Item{outputFile, 0}
 
 		if f != nil {
 			chatClient.RemoveChatFunction(twitchUsername)
 			f.Close()
-		}
-
-		// write yaml information about stream to file
-		streamInfo := gatherer.Done()
-		if err := writeYamlFile(outputFile, &streamInfo); err != nil {
-			log.Printf("error while writing yaml file for %s: %s\n", url, err)
 		}
 	}
 }
