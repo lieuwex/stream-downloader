@@ -109,13 +109,6 @@ func (c *DatapointGatherer) Loop(twitchUsername string) {
 	}
 
 	for {
-		select {
-		case <-c.ctx.Done():
-			return
-
-		case <-time.After(120 * time.Second):
-		}
-
 		s, err := twitchClient.GetCurrentStream(channelId)
 		if err != nil {
 			fmt.Printf("error getting stream info: %s", err)
@@ -132,6 +125,13 @@ func (c *DatapointGatherer) Loop(twitchUsername string) {
 			Game:      s.Game,
 		})
 		c.mu.Unlock()
+
+		select {
+		case <-c.ctx.Done():
+			return
+
+		case <-time.After(120 * time.Second):
+		}
 	}
 }
 func (c *DatapointGatherer) Done() StreamInfo {
