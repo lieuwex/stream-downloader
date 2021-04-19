@@ -91,6 +91,7 @@ func NewDatapointGatherer() *DatapointGatherer {
 }
 func (c *DatapointGatherer) Loop(twitchUsername string) {
 	if clientId == "" {
+		fmt.Println("clientId == \"\"")
 		return
 	}
 
@@ -104,6 +105,7 @@ func (c *DatapointGatherer) Loop(twitchUsername string) {
 		channelId = 49901658
 	}
 
+	fmt.Printf("channelId = %d\n", channelId)
 	if channelId == 0 {
 		return
 	}
@@ -116,6 +118,7 @@ func (c *DatapointGatherer) Loop(twitchUsername string) {
 
 		c.mu.Lock()
 		if c.ctx.Err() != nil {
+			fmt.Println("context has been finished in lock, goodbye")
 			return
 		}
 
@@ -128,6 +131,7 @@ func (c *DatapointGatherer) Loop(twitchUsername string) {
 
 		select {
 		case <-c.ctx.Done():
+			fmt.Println("context has been finished while waiting, goodbye")
 			return
 
 		case <-time.After(120 * time.Second):
