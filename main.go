@@ -164,7 +164,7 @@ func handleStream(channelCtx context.Context, chatClient *chat.Client, url strin
 
 		log.Printf("starting download for %s (twitchUsername = %s, hasChat = %t)\n", url, twitchUsername, hasChat)
 
-		streamCtx, cancelStreamCtx := context.WithCancel(channelCtx)
+		streamCtx, cancelStreamCtx := context.WithCancel(context.Background())
 
 		go twitchInfoLoop(streamCtx, twitchUsername, outputFile)
 
