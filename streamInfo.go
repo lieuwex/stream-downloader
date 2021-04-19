@@ -4,6 +4,7 @@ type StreamInfoDatapoint struct {
 	Title     string
 	Viewcount int64
 	Game      string
+	Timestamp int64
 }
 
 type StreamInfo struct {

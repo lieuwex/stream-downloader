@@ -110,6 +110,7 @@ func twitchInfoLoop(ctx context.Context, twitchUsername, outputFile string) {
 			Title:     s.Channel.Status,
 			Viewcount: s.Viewers,
 			Game:      s.Game,
+			Timestamp: time.Now().Unix(),
 		})
 
 		if err := writeYamlFile(outputFile, &info); err != nil {
