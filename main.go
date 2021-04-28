@@ -104,6 +104,9 @@ func twitchInfoLoop(ctx context.Context, twitchUsername, outputFile string) {
 		s, err := twitchClient.GetCurrentStream(channelId)
 		if err != nil {
 			fmt.Printf("error getting stream info: %s", err)
+		} else if s == nil {
+			fmt.Printf("got empty datapoint from twitch")
+			continue
 		}
 
 		info.Datapoints = append(info.Datapoints, StreamInfoDatapoint{
