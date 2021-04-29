@@ -98,15 +98,12 @@ func twitchInfoLoop(ctx context.Context, twitchUsername, outputFile string) {
 		return
 	}
 
-	var info StreamInfo
-
-	for {
+	handleTick := func(info *StreamInfo) error {
 		s, err := twitchClient.GetCurrentStream(channelId)
 		if err != nil {
-			fmt.Printf("error getting stream info: %s", err)
+			return fmt.Errorf("error getting stream info: %s", err)
 		} else if s == nil {
-			fmt.Printf("got empty datapoint from twitch")
-			continue
+			return fmt.Errorf("got empty datapoint from twitch")
 		}
 
 		info.Datapoints = append(info.Datapoints, StreamInfoDatapoint{
@@ -116,8 +113,14 @@ func twitchInfoLoop(ctx context.Context, twitchUsername, outputFile string) {
 			Timestamp: time.Now().Unix(),
 		})
 
-		if err := writeYamlFile(outputFile, &info); err != nil {
-			log.Printf("error while writing yaml file for %s: %s\n", twitchUsername, err)
+		return writeYamlFile(outputFile, info)
+	}
+
+	var info StreamInfo
+
+	for {
+		if err := handleTick(&info); err != nil {
+			log.Printf("error while ticking twitch info for %s: %s\n", twitchUsername, err)
 		}
 
 		select {
