@@ -12,8 +12,8 @@ import (
 const (
 	// retry a stream up to 5 times
 	maxTryCount = 5
-	// handle up to 3 streams at once
-	workerCount = 3
+	// handle up to 2 streams at once
+	workerCount = 2
 )
 
 type Settings struct {
