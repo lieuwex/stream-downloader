@@ -219,22 +219,14 @@ func parseStreamList(path string) ([]string, error) {
 func main() {
 	mainDir = os.Args[1]
 
-	var chatClient *chat.Client
-	if val := os.Getenv("TWITCH_AUTH"); val != "" {
-		splitted := strings.SplitN(val, ":", 2)
-		username := splitted[0]
-		apiKey := splitted[1]
-
-		log.Printf("created chat client for username %s", username)
-
-		chatClient = chat.CreateClient(username, apiKey)
-		go func() {
-			err := chatClient.Connect()
-			if err != nil {
-				log.Printf("error connecting to twitch irc: %s", err)
-			}
-		}()
-	}
+	chatClient := chat.CreateClient()
+	log.Println("created chat client")
+	go func() {
+		err := chatClient.Connect()
+		if err != nil {
+			log.Printf("error connecting to twitch irc: %s", err)
+		}
+	}()
 
 	clientId = os.Getenv("TWITCH_CLIENT_ID")
 

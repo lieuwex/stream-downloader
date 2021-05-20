@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jrm780/gotirc"
+	twitch "github.com/gempir/go-twitch-irc/v2"
 )
 
 type Message struct {
@@ -18,24 +18,15 @@ type Message struct {
 type ChatCallback func(Message)
 
 type Client struct {
-	username  string
-	apiKey    string
-	ircClient *gotirc.Client
+	ircClient *twitch.Client
 
 	mu    sync.Mutex
 	fnmap map[string]ChatCallback
 }
 
-func CreateClient(username, apiKey string) *Client {
-	options := gotirc.Options{
-		Host: "irc.chat.twitch.tv",
-		Port: 6667,
-	}
-
+func CreateClient() *Client {
 	client := &Client{
-		username:  username,
-		apiKey:    apiKey,
-		ircClient: gotirc.NewClient(options),
+		ircClient: twitch.NewAnonymousClient(),
 
 		fnmap: make(map[string]ChatCallback),
 	}
@@ -56,20 +47,23 @@ func CreateClient(username, apiKey string) *Client {
 		})
 	}
 
-	client.ircClient.OnAction(func(channel string, tags map[string]string, msg string) { fn("action", channel, msg, tags) })
-	client.ircClient.OnChat(func(channel string, tags map[string]string, msg string) { fn("chat", channel, msg, tags) })
-	client.ircClient.OnCheer(func(channel string, tags map[string]string, msg string) { fn("cheer", channel, msg, tags) })
-	client.ircClient.OnJoin(func(channel string, msg string) { fn("join", channel, msg, make(map[string]string)) })
-	client.ircClient.OnPart(func(channel string, msg string) { fn("part", channel, msg, make(map[string]string)) })
-	client.ircClient.OnResub(func(channel string, tags map[string]string, msg string) { fn("resub", channel, msg, tags) })
-	client.ircClient.OnSubscription(func(channel string, tags map[string]string, msg string) { fn("subscription", channel, msg, tags) })
-	client.ircClient.OnSubGift(func(channel string, tags map[string]string, msg string) { fn("subgift", channel, msg, tags) })
+	client.ircClient.OnPrivateMessage(func(m twitch.PrivateMessage) { fn("chat", m.Channel, m.Message, m.Tags) })
+	client.ircClient.OnUserNoticeMessage(func(m twitch.UserNoticeMessage) { fn(m.Tags["msg-id"], m.Channel, m.Message, m.Tags) })
+	//client.ircClient.OnWhisperMessage(func(m twitch.WhisperMessage) { })
+	//client.ircClient.OnClearChatMessage(func(m twitch.ClearChatMessage) {})
+	//client.ircClient.OnClearMessage(func(m twitch.ClearMessage) {})
+	//client.ircClient.OnRoomStateMessage(func(m twitch.RoomStateMessage) {})
+	//client.ircClient.OnUserStateMessage(func(m twitch.UserStateMessage) {})
+	//client.ircClient.OnGlobalUserStateMessage(func(m twitch.GlobalUserStateMessage) {})
+	//client.ircClient.OnNoticeMessage(func(m twitch.NoticeMessage) {})
+	//client.ircClient.OnUserJoinMessage(func(m twitch.UserJoinMessage) {})
+	//client.ircClient.OnUserPartMessage(func(m twitch.UserPartMessage) {})
 
 	return client
 }
 
 func (c *Client) Connect() error {
-	return c.ircClient.Connect(c.username, c.apiKey)
+	return c.ircClient.Connect()
 }
 
 func (c *Client) rejoinChats() {
@@ -112,5 +106,5 @@ func (c *Client) RemoveChatFunction(channel string) {
 	defer c.mu.Unlock()
 
 	delete(c.fnmap, channel)
-	c.ircClient.Part(channel)
+	c.ircClient.Depart(channel)
 }
