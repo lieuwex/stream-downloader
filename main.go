@@ -133,6 +133,24 @@ func twitchInfoLoop(ctx context.Context, twitchUsername, outputFile string) {
 	}
 }
 
+func formatChatMessage(msg chat.Message, time time.Time) (string, error) {
+	var buf strings.Builder
+
+	bytes, err := time.MarshalText()
+	if err != nil {
+		return "", err
+	}
+	buf.Write(bytes)
+	buf.WriteByte(' ')
+
+	enc := json.NewEncoder(&buf)
+	if err := enc.Encode(msg); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
 func handleStream(channelCtx context.Context, chatClient *chat.Client, url string) {
 	unlock := lm.Lock(url)
 	defer unlock()
@@ -182,10 +200,14 @@ func handleStream(channelCtx context.Context, chatClient *chat.Client, url strin
 			if err != nil {
 				log.Printf("error while create chat output file: %s", err)
 			} else {
-				encoder := json.NewEncoder(f)
-
-				chatClient.AddChatFunction(twitchUsername, func(msg chat.Message) {
-					encoder.Encode(msg)
+				chatClient.AddChatFunction(twitchUsername, func(msg chat.Message, time time.Time) {
+					str, err := formatChatMessage(msg, time)
+					if err != nil {
+						log.Printf("error while marshalling message: %s", err)
+					}
+					if _, err := f.WriteString(str); err != nil {
+						log.Printf("error while writing chat message to file: %s", err)
+					}
 				})
 			}
 		}

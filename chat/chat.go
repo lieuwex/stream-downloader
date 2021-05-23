@@ -11,11 +11,10 @@ import (
 type Message struct {
 	Type    string            `json:"type"`
 	Tags    map[string]string `json:"tags"`
-	Time    time.Time         `json:"time"`
 	Message string            `json:"message"`
 }
 
-type ChatCallback func(Message)
+type ChatCallback func(Message, time.Time)
 
 type Client struct {
 	ircClient *twitch.Client
@@ -42,9 +41,8 @@ func CreateClient() *Client {
 		fn(Message{
 			Type:    typ,
 			Tags:    tags,
-			Time:    time.Now(),
 			Message: msg,
-		})
+		}, time.Now())
 	}
 
 	client.ircClient.OnPrivateMessage(func(m twitch.PrivateMessage) { fn("chat", m.Channel, m.Message, m.Tags) })
