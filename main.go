@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -133,24 +132,6 @@ func twitchInfoLoop(ctx context.Context, twitchUsername, outputFile string) {
 	}
 }
 
-func formatChatMessage(msg chat.Message, time time.Time) (string, error) {
-	var buf strings.Builder
-
-	bytes, err := time.MarshalText()
-	if err != nil {
-		return "", err
-	}
-	buf.Write(bytes)
-	buf.WriteByte(' ')
-
-	enc := json.NewEncoder(&buf)
-	if err := enc.Encode(msg); err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
-}
-
 func handleStream(channelCtx context.Context, chatClient *chat.Client, url string) {
 	unlock := lm.Lock(url)
 	defer unlock()
@@ -193,22 +174,12 @@ func handleStream(channelCtx context.Context, chatClient *chat.Client, url strin
 
 		go twitchInfoLoop(streamCtx, twitchUsername, outputFile)
 
-		var f *os.File
 		if hasChat {
-			var err error
-			f, err = os.Create(strings.Replace(outputFile, ".ts", ".txt", 1))
+			f, err := os.Create(strings.Replace(outputFile, ".ts", ".txt", 1))
 			if err != nil {
 				log.Printf("error while create chat output file: %s", err)
 			} else {
-				chatClient.AddChatFunction(twitchUsername, func(msg chat.Message, time time.Time) {
-					str, err := formatChatMessage(msg, time)
-					if err != nil {
-						log.Printf("error while marshalling message: %s", err)
-					}
-					if _, err := f.WriteString(str); err != nil {
-						log.Printf("error while writing chat message to file: %s", err)
-					}
-				})
+				go chatRoutine(streamCtx, f, twitchUsername, chatClient)
 			}
 		}
 
@@ -220,11 +191,6 @@ func handleStream(channelCtx context.Context, chatClient *chat.Client, url strin
 		log.Printf("stream for %s ended\n", url)
 		cancelStreamCtx()
 		queue <- convert.Item{outputFile, 0}
-
-		if f != nil {
-			chatClient.RemoveChatFunction(twitchUsername)
-			f.Close()
-		}
 	}
 }
 
