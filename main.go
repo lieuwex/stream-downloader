@@ -175,9 +175,9 @@ func handleStream(channelCtx context.Context, chatClient *chat.Client, url strin
 		go twitchInfoLoop(streamCtx, twitchUsername, outputFile)
 
 		if hasChat {
-			f, err := os.Create(strings.Replace(outputFile, ".ts", ".txt", 1))
+			f, err := os.Create(strings.Replace(outputFile, ".ts", ".txt.zst", 1))
 			if err != nil {
-				log.Printf("error while create chat output file: %s", err)
+				log.Printf("error while creating chat output file: %s", err)
 			} else {
 				go chatRoutine(streamCtx, f, twitchUsername, chatClient)
 			}
