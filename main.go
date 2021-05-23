@@ -234,8 +234,16 @@ func parseStreamList(path string) ([]string, error) {
 		return []string{}, err
 	}
 
-	list := strings.TrimSpace(string(bytes))
-	return strings.Split(list, "\n"), nil
+	var res []string
+	lines := strings.Split(string(bytes), "\n")
+	for _, line := range lines {
+		line := strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		res = append(res, line)
+	}
+	return res, nil
 }
 
 func main() {
