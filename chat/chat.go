@@ -31,6 +31,8 @@ func CreateClient() *Client {
 	}
 
 	fn := func(typ, channel, msg string, tags map[string]string) {
+		time := time.Now()
+
 		client.mu.Lock()
 		fn, has := client.fnmap[channel]
 		client.mu.Unlock()
@@ -42,7 +44,7 @@ func CreateClient() *Client {
 			Type:    typ,
 			Tags:    tags,
 			Message: msg,
-		}, time.Now())
+		}, time)
 	}
 
 	client.ircClient.OnPrivateMessage(func(m twitch.PrivateMessage) { fn("chat", m.Channel, m.Message, m.Tags) })
