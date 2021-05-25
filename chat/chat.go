@@ -32,7 +32,7 @@ func CreateClient() *Client {
 
 	fn := func(typ, channel, msg string, tags map[string]string) {
 		client.mu.Lock()
-		fn, has := client.fnmap[channel[1:]]
+		fn, has := client.fnmap[channel]
 		client.mu.Unlock()
 		if !has {
 			return
