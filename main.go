@@ -134,7 +134,7 @@ func twitchInfoLoop(ctx context.Context, twitchUsername, outputFile string) {
 			fmt.Println("context has been finished while waiting, goodbye")
 			return
 
-		case <-time.After(120 * time.Second):
+		case <-time.After(90 * time.Second):
 		}
 	}
 }
