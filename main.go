@@ -84,16 +84,23 @@ func twitchInfoLoop(ctx context.Context, twitchUsername, outputFile string) {
 
 	twitchClient := twitch.NewClient(clientId)
 
-	var channelId int = 0
-	switch twitchUsername {
-	case "lekkerspelen":
-		channelId = 52385053
-	case "serpentgameplay":
-		channelId = 49901658
-	}
+	channelId, err := twitchClient.GetChannelId(twitchUsername)
+	if err != nil {
+		log.Printf("error getting stream id: %s. Falling back.", err)
 
-	fmt.Printf("channelId = %d\n", channelId)
-	if channelId == 0 {
+		switch twitchUsername {
+		case "lekkerspelen":
+			channelId = "52385053"
+		case "serpentgameplay":
+			channelId = "49901658"
+
+		default:
+			log.Printf("no fallback possible")
+			channelId = ""
+		}
+	}
+	fmt.Printf("channelId = %s\n", channelId)
+	if channelId == "" {
 		return
 	}
 
