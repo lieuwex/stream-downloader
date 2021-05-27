@@ -22,6 +22,7 @@ import (
 
 const (
 	checkInterval = 30 * time.Second
+	twitchLoopInterval = 90 * time.Second
 )
 
 var (
@@ -86,7 +87,7 @@ func twitchInfoLoop(ctx context.Context, twitchUsername, outputFile string) {
 
 	channelId, err := twitchClient.GetChannelId(twitchUsername)
 	if err != nil {
-		log.Printf("error getting stream id: %s. Falling back.", err)
+		log.Printf("error getting stream id for %s: %s. Falling back.", twitchUsername, err)
 
 		switch twitchUsername {
 		case "lekkerspelen":
@@ -95,7 +96,7 @@ func twitchInfoLoop(ctx context.Context, twitchUsername, outputFile string) {
 			channelId = "49901658"
 
 		default:
-			log.Printf("no fallback possible")
+			log.Printf("no fallback found for %s.", twitchUsername)
 			channelId = ""
 		}
 	}
@@ -134,7 +135,7 @@ func twitchInfoLoop(ctx context.Context, twitchUsername, outputFile string) {
 			fmt.Println("context has been finished while waiting, goodbye")
 			return
 
-		case <-time.After(90 * time.Second):
+		case <-time.After(twitchLoopInterval):
 		}
 	}
 }

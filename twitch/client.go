@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const httpClientTimeout = 5 * time.Second
+
 type Client struct {
 	httpClient *http.Client
 	clientId   string
@@ -15,7 +17,7 @@ type Client struct {
 
 func NewClient(clientId string) Client {
 	return Client{
-		httpClient: &http.Client{Timeout: 5 * time.Second},
+		httpClient: &http.Client{Timeout: httpClientTimeout},
 		clientId:   clientId,
 	}
 }
