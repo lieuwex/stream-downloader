@@ -144,9 +144,12 @@ func main() {
 	chatClient := chat.CreateClient()
 	log.Println("created chat client")
 	go func() {
-		err := chatClient.Connect()
-		if err != nil {
-			log.Printf("error connecting to twitch irc: %s", err)
+		for {
+			err := chatClient.Connect()
+			if err != nil {
+				log.Printf("error connecting to twitch irc, retrying: %s", err)
+			}
+			time.Sleep(time.Second * 5)
 		}
 	}()
 
